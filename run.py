@@ -40,6 +40,7 @@ if 'CIS_SERVICE_DIR' in os.environ:
 elif 'CIS_SERVICE_REGEXP' in os.environ:
     # for example '^build-([\w]{1,})$'
     regexp = os.getenv('CIS_SERVICE_REGEXP')
+    print(f"use regexp {regexp}")
     CIS_SERVICE_DIR = re.findall(regexp, os.getenv('CI_JOB_NAME'))[0]
 else:
     CIS_SERVICE_DIR = ''
