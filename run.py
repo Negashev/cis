@@ -8,43 +8,43 @@ import aiohttp
 
 from japronto import Application
 
-url = os.getenv('CI_PROJECT_URL', None)
+url = os.getenv('CIS_ENV_CI_PROJECT_URL', None)
 if url is None:
-    exit('set env CI_PROJECT_URL')
+    exit('set env CIS_ENV_CI_PROJECT_URL')
 
-o = urlparse(os.getenv('CI_PROJECT_URL', None))
+o = urlparse(os.getenv('CIS_ENV_CI_PROJECT_URL', None))
 PROJECT_URL = f"{o.scheme}://{o.netloc}"
 print(f"set PROJECT_URL = {PROJECT_URL}")
 
-CI_PROJECT_ID = os.getenv('CI_PROJECT_ID')
+CI_PROJECT_ID = os.getenv('CIS_ENV_CI_PROJECT_ID')
 print(f"set CI_PROJECT_ID = {CI_PROJECT_ID}")
 
-CI_COMMIT_SHA = os.getenv('CI_COMMIT_SHA')
+CI_COMMIT_SHA = os.getenv('CIS_ENV_CI_COMMIT_SHA')
 print(f"set CI_COMMIT_SHA = {CI_COMMIT_SHA}")
 
 CI_JOB_TOKEN = os.getenv('CI_JOB_TOKEN')
-CI_COMMIT_REF_NAME = os.getenv('CI_COMMIT_REF_NAME')
+CI_COMMIT_REF_NAME = os.getenv('CIS_ENV_CI_COMMIT_REF_NAME')
 
-DEFAULT_BUILDER_BRANCH = os.getenv('DEFAULT_TARGET_BRANCH', 'develop')
+DEFAULT_BUILDER_BRANCH = os.getenv('CIS_ENV_CIS_DEFAULT_TARGET_BRANCH', 'develop')
 
 # create dependencies map path
 try:
-    CIS_DEPENDENCIES_MAP = yaml.load(os.getenv('CIS_DEPENDENCIES_MAP'))
+    CIS_DEPENDENCIES_MAP = yaml.load(os.getenv('CIS_ENV_CIS_DEPENDENCIES_MAP'))
 except Exception as exc:
     print(exc)
     CIS_DEPENDENCIES_MAP = {}
 
 # set service path
-if 'CIS_SERVICE_DIR' in os.environ:
-    CIS_SERVICE_DIR = os.getenv('CIS_SERVICE_DIR')
-elif 'CIS_SERVICE_REGEXP' in os.environ:
+if 'CIS_ENV_CIS_SERVICE_DIR' in os.environ:
+    CIS_SERVICE_DIR = os.getenv('CIS_ENV_CIS_SERVICE_DIR')
+elif 'CIS_ENV_CIS_SERVICE_REGEXP' in os.environ:
     # for example '^build-([\w]{1,})$'
-    regexp = os.getenv('CIS_SERVICE_REGEXP')
-    CIS_SERVICE_DIR = re.findall(regexp, os.getenv('CI_JOB_NAME'))[0]
+    regexp = os.getenv('CIS_ENV_CIS_SERVICE_REGEXP')
+    CIS_SERVICE_DIR = re.findall(regexp, os.getenv('CIS_ENV_CI_JOB_NAME'))[0]
 else:
     CIS_SERVICE_DIR = ''
 
-CIS_SERVICE_PATH = os.getenv('CIS_SERVICE_PATH', '')
+CIS_SERVICE_PATH = os.getenv('CIS_ENV_CIS_SERVICE_PATH', '')
 if CIS_SERVICE_PATH != '':
     CIS_SERVICE_FULL_PATH = f"{CIS_SERVICE_PATH}/{CIS_SERVICE_DIR}"
 else:
@@ -142,7 +142,7 @@ async def service_diff(request):
                 found_diff = True
     if not found_diff:
         return request.Response(text=builder_branch, mime_type="text/html", code=code_builder_branch)
-    return request.Response(text=os.getenv('CI_COMMIT_REF_SLUG', builder_branch), mime_type="text/html")
+    return request.Response(text=os.getenv('CIS_ENV_CI_COMMIT_REF_SLUG', builder_branch), mime_type="text/html")
 
 
 app = Application()
