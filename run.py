@@ -114,21 +114,23 @@ async def create_dependencies(source, all=None) -> []:
     return all
 
 
-async def service_diff(request):
-    # filter service name or ENV CIS_SERVICE_FULL_PATH
-    if 'service' in request.match_dict:
-        if CIS_SERVICE_PATH != '':
-            service = f"{CIS_SERVICE_PATH}/{request.match_dict['service']}"
+async def create_service_array_from_string(data, match_dict):
+    for service in data.split(','):
+        if 'service' in match_dict:
+            if CIS_SERVICE_PATH != '':
+                service = f"{CIS_SERVICE_PATH}/{request.match_dict['service']}"
+            else:
+                service = match_dict['service']
         else:
-            service = request.match_dict['service']
-    else:
-        service = CIS_SERVICE_FULL_PATH
-    code_builder_branch = 404
-    if 'status' in request.query:
-        code_builder_branch = request.query['status']
+            service = CIS_SERVICE_FULL_PATH
+        result = [service]
+        return service
+
+
+async def get_diff(service, query):
     # find merge data
     builder_branch = await get_builder_branch()
-    data = await get_with_cache(f"{compare_url}{builder_branch}&private_token={request.query['token']}")
+    data = await get_with_cache(f"{compare_url}{builder_branch}&private_token={query['token']}")
     # find dependencies for this service
     service_with_dependencies = await create_dependencies(service)
     print(f"check use {', '.join(service_with_dependencies)}")
@@ -140,7 +142,46 @@ async def service_diff(request):
                     found_diff = True
     except Exception as e:
         print(e)
+    return found_diff, builder_branch
+
+
+# filter service name or ENV CIS_SERVICE_FULL_PATH
+async def make_service_path(service):
+    if CIS_SERVICE_PATH != '':
+        return f"{CIS_SERVICE_PATH}/{service}"
+    return service
+
+
+async def service_diff(request):
+    if 'token' not in request.query:
+        return request.Response(text=os.getenv('CI_COMMIT_REF_SLUG', 'develop'), mime_type="text/html")
+    if 'service' in request.match_dict:
+        service = await make_service_path(request.match_dict['service'])
+    else:
+        service = CIS_SERVICE_FULL_PATH
+    code_builder_branch = 404
+    if 'status' in request.query:
+        code_builder_branch = request.query['status']
+    # find merge data
+    found_diff, builder_branch = await get_diff(service, request.query)
     if not found_diff:
+        return request.Response(text=builder_branch, mime_type="text/html", code=code_builder_branch)
+    return request.Response(text=os.getenv('CI_COMMIT_REF_SLUG', builder_branch), mime_type="text/html")
+
+
+async def services_diff(request):
+    found_diffs = False
+    builder_branch = 'develop'
+    for service in request.match_dict['services'].split(','):
+        service_with_path = await make_service_path(service)
+        found_diff, this_builder_branch = await get_diff(service_with_path, request.query)
+        if found_diff:
+            found_diffs = found_diff
+            builder_branch = this_builder_branch
+    if not found_diffs:
+        code_builder_branch = 404
+        if 'status' in request.query:
+            code_builder_branch = request.query['status']
         return request.Response(text=builder_branch, mime_type="text/html", code=code_builder_branch)
     return request.Response(text=os.getenv('CI_COMMIT_REF_SLUG', builder_branch), mime_type="text/html")
 
@@ -148,4 +189,5 @@ async def service_diff(request):
 app = Application()
 app.router.add_route('/', service_diff)
 app.router.add_route('/{service}', service_diff)
+app.router.add_route('/multi/{services}', services_diff)
 app.run(port=int(os.getenv('CIS_PORT', 80)))
