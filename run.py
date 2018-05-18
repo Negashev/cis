@@ -114,18 +114,6 @@ async def create_dependencies(source, all=None) -> []:
     return all
 
 
-async def create_service_array_from_string(data, match_dict):
-    for service in data.split(','):
-        if 'service' in match_dict:
-            if CIS_SERVICE_PATH != '':
-                service = f"{CIS_SERVICE_PATH}/{request.match_dict['service']}"
-            else:
-                service = match_dict['service']
-        else:
-            service = CIS_SERVICE_FULL_PATH
-        result = [service]
-        return service
-
 
 async def get_diff(service, query):
     # find merge data
