@@ -7,3 +7,19 @@ example in docker-compose.yml
 ## Dependencies
 
 Some applications in monorepositories depend on neighbors, you can make your dependency map in the variable CIS_DEPENDENCIES_MAP. for example from docker-compose.yml. src / flask depends on the src / python folder, which means that if you hit something in the src / python folder, then CI job for src / flask will also run if it checks its dependencies
+
+## gitlab ci
+```yaml
+job:
+  stage: build
+  image: docker:git
+  services:
+  - name: negash/cis
+    alias: cis # it set all variables for cis with prefix `CIS_ENV_*`
+  variables: &docker_build_vars
+    DOCKER_FILE: Dockerfile
+    CIS_SERVICE_REGEXP: ^build-([\w]{1,})$ # -> CIS_ENV_CIS_SERVICE_REGEXP is service
+  script:
+    - wget cis -O- || exit 0
+    - long build (or skip ifs cis work)
+```
