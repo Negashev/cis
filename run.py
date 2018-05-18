@@ -126,6 +126,9 @@ async def service_diff(request):
             service = request.match_dict['service']
     else:
         service = CIS_SERVICE_FULL_PATH
+    code_builder_branch = 404
+    if request.query_string and 'ok' in request.query_string:
+        code_builder_branch = 200
     # find merge data
     builder_branch = await get_builder_branch()
     data = await get_with_cache(f"{compare_url}{builder_branch}")
@@ -135,12 +138,10 @@ async def service_diff(request):
     found_diff = False
     for change in data['diffs']:
         for source in service_with_dependencies:
-            if change['old_path'].startswith(source):
-                found_diff = True
-            if change['new_path'].startswith(source):
+            if change['old_path'].startswith(source) or change['new_path'].startswith(source):
                 found_diff = True
     if not found_diff:
-        return request.Response(text=builder_branch, mime_type="text/html", code=404)
+        return request.Response(text=builder_branch, mime_type="text/html", code=code_builder_branch)
     return request.Response(text=os.getenv('CI_COMMIT_REF_SLUG', builder_branch), mime_type="text/html")
 
 
