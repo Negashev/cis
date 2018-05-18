@@ -19,7 +19,6 @@ print(f"set PROJECT_URL = {PROJECT_URL}")
 CI_PROJECT_ID = os.getenv('CI_PROJECT_ID')
 print(f"set CI_PROJECT_ID = {CI_PROJECT_ID}")
 
-CI_JOB_TOKEN = os.getenv('CI_JOB_TOKEN')
 CI_COMMIT_REF_NAME = os.getenv('CI_COMMIT_REF_NAME')
 
 DEFAULT_BUILDER_BRANCH = os.getenv('DEFAULT_TARGET_BRANCH', 'develop')
@@ -75,7 +74,7 @@ async def get_with_cache(url, cache=True):
         if data is not None:
             print(f'from cache {url}')
             return data
-    async with aiohttp.ClientSession(headers={"PRIVATE-TOKEN": CI_JOB_TOKEN}) as session:
+    async with aiohttp.ClientSession() as session:
         async with session.get(url) as response:
             text = await response.read()
             decoded = text.decode()
