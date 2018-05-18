@@ -19,9 +19,6 @@ print(f"set PROJECT_URL = {PROJECT_URL}")
 CI_PROJECT_ID = os.getenv('CI_PROJECT_ID')
 print(f"set CI_PROJECT_ID = {CI_PROJECT_ID}")
 
-CI_COMMIT_SHA = os.getenv('CI_COMMIT_SHA')
-print(f"set CI_COMMIT_SHA = {CI_COMMIT_SHA}")
-
 CI_JOB_TOKEN = os.getenv('CI_JOB_TOKEN')
 CI_COMMIT_REF_NAME = os.getenv('CI_COMMIT_REF_NAME')
 
@@ -128,19 +125,22 @@ async def service_diff(request):
     else:
         service = CIS_SERVICE_FULL_PATH
     code_builder_branch = 404
-    if request.query_string and 'ok' in request.query_string:
-        code_builder_branch = 200
+    if 'status' in request.query:
+        code_builder_branch = request.query['status']
     # find merge data
     builder_branch = await get_builder_branch()
-    data = await get_with_cache(f"{compare_url}{builder_branch}")
+    data = await get_with_cache(f"{compare_url}{builder_branch}&private_token={request.query['token']}")
     # find dependencies for this service
     service_with_dependencies = await create_dependencies(service)
     print(f"check use {', '.join(service_with_dependencies)}")
     found_diff = False
-    for change in data['diffs']:
-        for source in service_with_dependencies:
-            if change['old_path'].startswith(source) or change['new_path'].startswith(source):
-                found_diff = True
+    try:
+        for change in data['diffs']:
+            for source in service_with_dependencies:
+                if change['old_path'].startswith(source) or change['new_path'].startswith(source):
+                    found_diff = True
+    except Exception as e:
+        print(e)
     if not found_diff:
         return request.Response(text=builder_branch, mime_type="text/html", code=code_builder_branch)
     return request.Response(text=os.getenv('CI_COMMIT_REF_SLUG', builder_branch), mime_type="text/html")
