@@ -12,6 +12,10 @@ url = os.getenv('CI_PROJECT_URL', None)
 if url is None:
     exit('set env CI_PROJECT_URL')
 
+
+if 'CIS_TOKEN' in os.environ:
+    CI_TOKEN = os.getenv('CIS_TOKEN')
+
 o = urlparse(os.getenv('CI_PROJECT_URL', None))
 PROJECT_URL = f"{o.scheme}://{o.netloc}"
 print(f"set PROJECT_URL = {PROJECT_URL}")
@@ -25,7 +29,37 @@ DEFAULT_BUILDER_BRANCH = os.getenv('DEFAULT_TARGET_BRANCH', 'develop')
 
 # create dependencies map path
 try:
-    CIS_DEPENDENCIES_MAP = yaml.load(os.getenv('CIS_DEPENDENCIES_MAP'))
+    # CIS_DEPENDENCIES_MAP = yaml.load(os.getenv('CIS_DEPENDENCIES_MAP'))
+    CIS_DEPENDENCIES_MAP = yaml.load('''    
+    src/core:
+      - build.gradle
+      - settings.gradle
+    src/api:
+      - src/core
+    src/api-internal:
+      - src/core
+    src/api-recomendations:
+      - src/core
+    src/api-recomendations-internal:
+      - src/core
+    src/import-one-time:
+      - src/core
+    src/importer:
+      - src/core
+    src/lh-java:
+      - src/core
+    src/lh_services:
+      - src/python3
+    src/lh_async:
+      - src/python
+    src/sphinx:
+      - src/liquibase
+    src/sphinx-datamart:
+      - src/liquibase
+    src/liquibase:
+      - src/sphinx
+      - src/sphinx-datamart
+    ''')
 except Exception as exc:
     print(exc)
     CIS_DEPENDENCIES_MAP = {}
@@ -72,7 +106,7 @@ async def get_with_cache(url, cache=True) -> dict:
         if data is not None:
             print(f'from cache {url}')
             return data
-    async with aiohttp.ClientSession() as session:
+    async with aiohttp.ClientSession(headers={"PRIVATE-TOKEN": CI_TOKEN}) as session:
         async with session.get(url) as response:
             text = await response.read()
             decoded = text.decode()
@@ -113,11 +147,11 @@ async def create_dependencies(source, all=None) -> []:
     return all
 
 
-async def get_diff(service, token, branch_ref_name) -> (bool, str):
+async def get_diff(service, branch_ref_name) -> (bool, str):
     # find merge data
     builder_branch = await get_builder_branch(branch_ref_name)
     data = await get_with_cache(
-        f"{PROJECT_URL}/api/v4/projects/{CI_PROJECT_ID}/repository/compare?to={branch_ref_name}&from={builder_branch}&private_token={token}"
+        f"{PROJECT_URL}/api/v4/projects/{CI_PROJECT_ID}/repository/compare?to={branch_ref_name}&from={builder_branch}"
     )
     # find dependencies for this service
     service_with_dependencies = await create_dependencies(service)
@@ -141,8 +175,6 @@ async def make_service_path(service) -> str:
 
 
 async def service_diff(request):
-    if not request.token:
-        return request.Response(text=os.getenv('CI_COMMIT_REF_SLUG', 'develop'), mime_type="text/html")
     if 'service' in request.match_dict:
         service = await make_service_path(request.match_dict['service'])
     else:
@@ -151,20 +183,18 @@ async def service_diff(request):
     if 'status' in request.query:
         code_builder_branch = int(request.query['status'])
     # find merge data
-    found_diff, builder_branch = await get_diff(service, request.token, request.branch_ref_name)
+    found_diff, builder_branch = await get_diff(service, request.branch_ref_name)
     if not found_diff:
         return request.Response(text=builder_branch, mime_type="text/html", code=code_builder_branch)
     return request.Response(text=os.getenv('CI_COMMIT_REF_SLUG', builder_branch), mime_type="text/html")
 
 
 async def services_diff(request):
-    if not request.token:
-        return request.Response(text=os.getenv('CI_COMMIT_REF_SLUG', 'develop'), mime_type="text/html")
     found_diffs = False
     builder_branch = 'develop'
     for service in request.match_dict['services'].split(','):
         service_with_path = await make_service_path(service)
-        found_diff, this_builder_branch = await get_diff(service_with_path, request.token, request.branch_ref_name)
+        found_diff, this_builder_branch = await get_diff(service_with_path, request.branch_ref_name)
         if found_diff:
             found_diffs = found_diff
             builder_branch = this_builder_branch
@@ -176,12 +206,6 @@ async def services_diff(request):
     return request.Response(text=os.getenv('CI_COMMIT_REF_SLUG', builder_branch), mime_type="text/html")
 
 
-def token(request) -> str:
-    if 'token' not in request.query:
-        return
-    return request.query['token']
-
-
 def branch_ref_name(request) -> str:
     if 'branch_ref_name' in request.query:
         return request.query['branch_ref_name']
@@ -190,7 +214,6 @@ def branch_ref_name(request) -> str:
 
 
 app = Application()
-app.extend_request(token, property=True)
 app.extend_request(branch_ref_name, property=True)
 app.router.add_route('/', service_diff)
 app.router.add_route('/{service}', service_diff)
