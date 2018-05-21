@@ -114,7 +114,6 @@ async def create_dependencies(source, all=None) -> []:
     return all
 
 
-
 async def get_diff(service, query):
     # find merge data
     builder_branch = await get_builder_branch()
@@ -149,7 +148,7 @@ async def service_diff(request):
         service = CIS_SERVICE_FULL_PATH
     code_builder_branch = 404
     if 'status' in request.query:
-        code_builder_branch = request.query['status']
+        code_builder_branch = int(request.query['status'])
     # find merge data
     found_diff, builder_branch = await get_diff(service, request.query)
     if not found_diff:
