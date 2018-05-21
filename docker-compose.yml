@@ -3,7 +3,6 @@ services:
   web:
     build: .
     environment:
-      CI_JOB_TOKEN: job_t0ke9
       CI_PROJECT_URL: https://gitlab.com/username/monorepo
       CI_PROJECT_ID: 1
       CI_JOB_NAME: build-flask
