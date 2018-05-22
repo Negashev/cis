@@ -8,7 +8,7 @@ services:
       CI_JOB_NAME: build-flask
       CI_COMMIT_REF_SLUG: feature-back-0001
       CI_COMMIT_REF_NAME: feature/BACK-0001
-      CIS_TOKEN: 234123414sdgfsdfg
+      CIS_TOKEN: 234123414sdgfsdfg # base64 from you token with api access
       CIS_SERVICE_REGEXP: ^build-([\w]{1,})$$
       CIS_SERVICE_PATH: src
       CIS_DEPENDENCIES_MAP: |

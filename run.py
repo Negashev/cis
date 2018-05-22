@@ -3,6 +3,7 @@ import json
 import re
 import yaml
 import hashlib
+import base64
 from urllib.parse import urlparse
 import aiohttp
 
@@ -13,8 +14,8 @@ if url is None:
     exit('set env CI_PROJECT_URL')
 
 
-if 'CIS_TOKEN' in os.environ:
-    CI_TOKEN = os.getenv('CIS_TOKEN')
+if 'CIS_API_TOKEN' in os.environ:
+    CI_TOKEN = base64.b64decode(os.getenv('CIS_API_TOKEN').encode('utf-8')).decode('utf-8')
 
 o = urlparse(os.getenv('CI_PROJECT_URL', None))
 PROJECT_URL = f"{o.scheme}://{o.netloc}"
@@ -29,37 +30,7 @@ DEFAULT_BUILDER_BRANCH = os.getenv('DEFAULT_TARGET_BRANCH', 'develop')
 
 # create dependencies map path
 try:
-    # CIS_DEPENDENCIES_MAP = yaml.load(os.getenv('CIS_DEPENDENCIES_MAP'))
-    CIS_DEPENDENCIES_MAP = yaml.load('''    
-    src/core:
-      - build.gradle
-      - settings.gradle
-    src/api:
-      - src/core
-    src/api-internal:
-      - src/core
-    src/api-recomendations:
-      - src/core
-    src/api-recomendations-internal:
-      - src/core
-    src/import-one-time:
-      - src/core
-    src/importer:
-      - src/core
-    src/lh-java:
-      - src/core
-    src/lh_services:
-      - src/python3
-    src/lh_async:
-      - src/python
-    src/sphinx:
-      - src/liquibase
-    src/sphinx-datamart:
-      - src/liquibase
-    src/liquibase:
-      - src/sphinx
-      - src/sphinx-datamart
-    ''')
+    CIS_DEPENDENCIES_MAP = yaml.load(os.getenv('CIS_DEPENDENCIES_MAP'))
 except Exception as exc:
     print(exc)
     CIS_DEPENDENCIES_MAP = {}
