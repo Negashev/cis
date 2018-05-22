@@ -25,6 +25,7 @@ CI_PROJECT_ID = os.getenv('CI_PROJECT_ID')
 print(f"set CI_PROJECT_ID = {CI_PROJECT_ID}")
 
 CI_COMMIT_REF_NAME = os.getenv('CI_COMMIT_REF_NAME')
+CI_COMMIT_SHA = os.getenv('CI_COMMIT_SHA')
 
 DEFAULT_BUILDER_BRANCH = os.getenv('DEFAULT_TARGET_BRANCH', 'develop')
 
@@ -181,7 +182,7 @@ def branch_ref_name(request) -> str:
     if 'branch_ref_name' in request.query:
         return request.query['branch_ref_name']
     else:
-        return CI_COMMIT_REF_NAME
+        return CI_COMMIT_SHA
 
 
 app = Application()
