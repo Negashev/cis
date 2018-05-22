@@ -164,7 +164,7 @@ async def service_diff(request):
 async def services_diff(request):
     found_diffs = False
     builder_branch = 'develop'
-    for service in request.match_dict['services'].split(','):
+    for service in request.query['services'].split(','):
         service_with_path = await make_service_path(service)
         found_diff, this_builder_branch = await get_diff(service_with_path, request.branch_ref_name)
         if found_diff:
@@ -188,6 +188,6 @@ def branch_ref_name(request) -> str:
 app = Application()
 app.extend_request(branch_ref_name, property=True)
 app.router.add_route('/', service_diff)
+app.router.add_route('/._multi', services_diff)
 app.router.add_route('/{service}', service_diff)
-app.router.add_route('/multi/{services}', services_diff)
 app.run(port=int(os.getenv('CIS_PORT', 80)))
