@@ -13,7 +13,6 @@ url = os.getenv('CI_PROJECT_URL', None)
 if url is None:
     exit('set env CI_PROJECT_URL')
 
-
 if 'CIS_API_TOKEN' in os.environ:
     CI_TOKEN = base64.b64decode(os.getenv('CIS_API_TOKEN').encode('utf-8')).decode('utf-8')
 
@@ -139,16 +138,9 @@ async def get_diff(service, branch_ref_name) -> (bool, str):
     return found_diff, builder_branch
 
 
-# filter service name or ENV CIS_SERVICE_FULL_PATH
-async def make_service_path(service) -> str:
-    if CIS_SERVICE_PATH != '':
-        return f"{CIS_SERVICE_PATH}/{service}"
-    return service
-
-
 async def service_diff(request):
     if 'service' in request.match_dict:
-        service = await make_service_path(request.match_dict['service'])
+        service = f"{request.service_path}{request.match_dict['service']}"
     else:
         service = CIS_SERVICE_FULL_PATH
     code_builder_branch = 404
@@ -165,7 +157,7 @@ async def services_diff(request):
     found_diffs = False
     builder_branch = 'develop'
     for service in request.query['services'].split(','):
-        service_with_path = await make_service_path(service)
+        service_with_path = f"{request.service_path}{service}"
         found_diff, this_builder_branch = await get_diff(service_with_path, request.branch_ref_name)
         if found_diff:
             found_diffs = found_diff
@@ -185,8 +177,20 @@ def branch_ref_name(request) -> str:
         return CI_COMMIT_SHA
 
 
+# filter service name or ENV CIS_SERVICE_FULL_PATH
+def service_path(request) -> str:
+    if 'cis_path' in request.query:
+        cis_path = request.query['cis_path']
+    else:
+        cis_path = CIS_SERVICE_PATH
+    if cis_path != '':
+        cis_path = f"{cis_path}/"
+    return cis_path
+
+
 app = Application()
 app.extend_request(branch_ref_name, property=True)
+app.extend_request(service_path, property=True)
 app.router.add_route('/', service_diff)
 app.router.add_route('/._multi', services_diff)
 app.router.add_route('/{service}', service_diff)
