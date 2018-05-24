@@ -110,9 +110,9 @@ async def get_builder_branch(branch_ref_name) -> str:
     if branch_ref_name.startswith('hotfix/'):
         builder_branch = 'master'
     if branch_ref_name == 'develop':
-        builder_branch = await builder_branch_by_parent_ids()
+        builder_branch = 'develop'
     if branch_ref_name == 'master':
-        builder_branch = await builder_branch_by_parent_ids()
+        builder_branch = 'master'
     return builder_branch
 
 
@@ -132,8 +132,11 @@ async def create_dependencies(source, all=None) -> []:
 async def get_diff(service, branch_ref_name) -> (bool, str):
     # find merge data
     builder_branch = await get_builder_branch(branch_ref_name)
+    compare = builder_branch
+    if builder_branch in ['develop', 'master']:
+        compare = await builder_branch_by_parent_ids()
     data = await get_with_cache(
-        f"{PROJECT_URL}/api/v4/projects/{CI_PROJECT_ID}/repository/compare?to={CI_COMMIT_SHA}&from={builder_branch}"
+        f"{PROJECT_URL}/api/v4/projects/{CI_PROJECT_ID}/repository/compare?to={CI_COMMIT_SHA}&from={compare}"
     )
     # find dependencies for this service
     service_with_dependencies = await create_dependencies(service)
