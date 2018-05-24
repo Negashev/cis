@@ -86,6 +86,17 @@ async def get_with_cache(url, cache=True) -> dict:
             return data
 
 
+async def builder_branch_by_parent_ids(commit=CI_COMMIT_SHA):
+    data = await get_with_cache(
+        f"{PROJECT_URL}/api/v4/projects/{CI_PROJECT_ID}/repository/commits/{commit}"
+    )
+    try:
+        return data['parent_ids'][0]
+    except Exception as e:
+        print(e)
+        return commit
+
+
 async def get_builder_branch(branch_ref_name) -> str:
     # if builder_branch is ????? use default
     builder_branch = DEFAULT_BUILDER_BRANCH
@@ -99,9 +110,9 @@ async def get_builder_branch(branch_ref_name) -> str:
     if branch_ref_name.startswith('hotfix/'):
         builder_branch = 'master'
     if branch_ref_name == 'develop':
-        builder_branch = CI_COMMIT_REF_NAME
+        builder_branch = await builder_branch_by_parent_ids()
     if branch_ref_name == 'master':
-        builder_branch = CI_COMMIT_REF_NAME
+        builder_branch = await builder_branch_by_parent_ids()
     return builder_branch
 
 
@@ -122,7 +133,7 @@ async def get_diff(service, branch_ref_name) -> (bool, str):
     # find merge data
     builder_branch = await get_builder_branch(branch_ref_name)
     data = await get_with_cache(
-        f"{PROJECT_URL}/api/v4/projects/{CI_PROJECT_ID}/repository/compare?to={branch_ref_name}&from={builder_branch}"
+        f"{PROJECT_URL}/api/v4/projects/{CI_PROJECT_ID}/repository/compare?to={CI_COMMIT_SHA}&from={builder_branch}"
     )
     # find dependencies for this service
     service_with_dependencies = await create_dependencies(service)
@@ -174,7 +185,7 @@ def branch_ref_name(request) -> str:
     if 'branch_ref_name' in request.query:
         return request.query['branch_ref_name']
     else:
-        return CI_COMMIT_SHA
+        return CI_COMMIT_REF_NAME
 
 
 # filter service name or ENV CIS_SERVICE_FULL_PATH
