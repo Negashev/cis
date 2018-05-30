@@ -133,7 +133,7 @@ async def get_diff(service, branch_ref_name) -> (bool, str):
     # find merge data
     builder_branch = await get_builder_branch(branch_ref_name)
     compare = builder_branch
-    if builder_branch in ['develop', 'master']:
+    if CI_COMMIT_REF_NAME in ['develop', 'master']:
         compare = await builder_branch_by_parent_ids()
     data = await get_with_cache(
         f"{PROJECT_URL}/api/v4/projects/{CI_PROJECT_ID}/repository/compare?to={CI_COMMIT_SHA}&from={compare}"
