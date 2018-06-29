@@ -1,6 +1,6 @@
 # CIS (CI Skip)
 
-The ci-accelerator for the mono repository in the CI Gythlab, passes the builds for the folders that you did not touch in the new branch, just using the containers from the previous branch to git flow
+The ci-accelerator for the mono repository in the CI Gitlab, passes the builds for the folders that you did not touch in the new branch, just using the containers from the previous branch to git flow
 
 example in docker-compose.yml
 
