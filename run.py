@@ -86,34 +86,45 @@ async def get_with_cache(url, cache=True) -> dict:
             return data
 
 
-async def builder_branch_by_parent_ids(commit=CI_COMMIT_SHA):
+async def builder_branch_by_parent_ids(commit=CI_COMMIT_SHA, ref=False):
     data = await get_with_cache(
         f"{PROJECT_URL}/api/v4/projects/{CI_PROJECT_ID}/repository/commits/{commit}"
     )
     try:
-        return data['parent_ids'][0]
+        if ref and data['last_pipeline']:
+            return data['parent_ids'][0], data['last_pipeline']['ref']
+        else:
+            return data['parent_ids'][0], ''
     except Exception as e:
         print(e)
-        return commit
+        return commit, ''
 
 
-async def get_builder_branch(branch_ref_name) -> str:
+async def recursive_builder_branch_by_parent_ids(commit=CI_COMMIT_SHA, recursive=1000) -> [str, str]:
+    if recursive < 0:
+        return commit, 'develop'
+    parent_commit, ref_branche_name = await builder_branch_by_parent_ids(commit, ref=True)
+    if ref_branche_name.startswith('release'):
+        return ref_branche_name, 'develop'
+    return await recursive_builder_branch_by_parent_ids(parent_commit, recursive - 1)
+
+
+async def get_builder_branch(branch_ref_name) -> [str, str]:
     # if builder_branch is ????? use default
     builder_branch = DEFAULT_BUILDER_BRANCH
+    ref_branche_name = ''
     if branch_ref_name.startswith('feature/'):
         builder_branch = 'develop'
     if branch_ref_name.startswith('bugfix/'):
         # FORM current release
-        builder_branch = 'develop'
+        builder_branch, ref_branche_name = await recursive_builder_branch_by_parent_ids()
     if branch_ref_name.startswith('release/'):
         builder_branch = 'develop'
     if branch_ref_name.startswith('hotfix/'):
         builder_branch = 'master'
     if branch_ref_name == 'develop':
         builder_branch = 'develop'
-    if branch_ref_name == 'master':
-        builder_branch = 'master'
-    return builder_branch
+    return builder_branch, ref_branche_name
 
 
 async def create_dependencies(source, all=None) -> []:
@@ -129,20 +140,10 @@ async def create_dependencies(source, all=None) -> []:
     return all
 
 
-async def get_diff(service, branch_ref_name) -> (bool, str):
-    # find merge data
-    builder_branch = await get_builder_branch(branch_ref_name)
-    compare = builder_branch
-    if CI_COMMIT_REF_NAME == 'develop':
-        compare = await builder_branch_by_parent_ids()
-    if CI_COMMIT_REF_NAME == 'master':
-        return True, 'master'
+async def get_diff_for_branch(from_key, service_with_dependencies, to_key=CI_COMMIT_SHA):
     data = await get_with_cache(
-        f"{PROJECT_URL}/api/v4/projects/{CI_PROJECT_ID}/repository/compare?to={CI_COMMIT_SHA}&from={compare}"
+        f"{PROJECT_URL}/api/v4/projects/{CI_PROJECT_ID}/repository/compare?from={from_key}&to={to_key}"
     )
-    # find dependencies for this service
-    service_with_dependencies = await create_dependencies(service)
-    print(f"check use {', '.join(service_with_dependencies)}")
     found_diff = False
     try:
         for change in data['diffs']:
@@ -151,6 +152,28 @@ async def get_diff(service, branch_ref_name) -> (bool, str):
                     found_diff = True
     except Exception as e:
         print(e)
+    return found_diff
+
+
+async def get_diff(service, branch_ref_name) -> (bool, str):
+    # find merge data
+    builder_branch, ref_branche_name = await get_builder_branch(branch_ref_name)
+    compare = builder_branch
+    if CI_COMMIT_REF_NAME == 'develop':
+        compare, ref = await builder_branch_by_parent_ids()
+    if CI_COMMIT_REF_NAME == 'master':
+        return True, 'master'
+    if CI_COMMIT_REF_NAME.startswith('release'):
+        return True, CI_COMMIT_REF_NAME
+    # find dependencies for this service
+    service_with_dependencies = await create_dependencies(service)
+    print(f"check use {', '.join(service_with_dependencies)}")
+    found_diff = await get_diff_for_branch(compare, service_with_dependencies)
+    if ref_branche_name and not found_diff:
+        found_diff_compare = await get_diff_for_branch(ref_branche_name, service_with_dependencies)
+        print(found_diff_compare, ref_branche_name)
+        if not found_diff_compare:
+            builder_branch = ref_branche_name
     return found_diff, builder_branch
 
 
