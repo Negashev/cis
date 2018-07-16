@@ -164,7 +164,7 @@ async def get_diff(service, branch_ref_name) -> (bool, str):
     if CI_COMMIT_REF_NAME == 'master':
         return True, 'master'
     if CI_COMMIT_REF_NAME.startswith('release'):
-        return True, CI_COMMIT_REF_NAME
+        return True, os.getenv('CI_COMMIT_REF_SLUG', builder_branch)
     # find dependencies for this service
     service_with_dependencies = await create_dependencies(service)
     print(f"check use {', '.join(service_with_dependencies)}")
@@ -174,7 +174,7 @@ async def get_diff(service, branch_ref_name) -> (bool, str):
         print(found_diff_compare, ref_branche_name)
         if not found_diff_compare:
             builder_branch = ref_branche_name
-    return found_diff, builder_branch
+    return found_diff, re.sub('[^0-9a-z]+', '-', builder_branch.lower())[0:63]
 
 
 async def service_diff(request):
