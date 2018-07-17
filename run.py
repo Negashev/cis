@@ -27,6 +27,7 @@ CI_COMMIT_REF_NAME = os.getenv('CI_COMMIT_REF_NAME')
 CI_COMMIT_SHA = os.getenv('CI_COMMIT_SHA')
 
 DEFAULT_BUILDER_BRANCH = os.getenv('DEFAULT_TARGET_BRANCH', 'develop')
+FREEZE_DEVELOP_WITH_RELEASE = bool(int(os.getenv('FREEZE_DEVELOP_WITH_RELEASE', 0)))
 
 # create dependencies map path
 try:
@@ -169,7 +170,7 @@ async def get_diff(service, branch_ref_name) -> (bool, str):
     service_with_dependencies = await create_dependencies(service)
     print(f"check use {', '.join(service_with_dependencies)}")
     found_diff = await get_diff_for_branch(compare, service_with_dependencies)
-    if ref_branche_name and not found_diff:
+    if ref_branche_name and not found_diff and FREEZE_DEVELOP_WITH_RELEASE:
         found_diff_compare = await get_diff_for_branch(ref_branche_name, service_with_dependencies)
         print(found_diff_compare, ref_branche_name)
         if not found_diff_compare:
