@@ -16,6 +16,9 @@ if url is None:
 if 'CIS_API_TOKEN' in os.environ:
     CI_TOKEN = base64.b64decode(os.getenv('CIS_API_TOKEN').encode('utf-8')).decode('utf-8')
 
+if 'CIS_CI_JOB_TOKEN' in os.environ:
+    CI_TOKEN = os.environ['CIS_CI_JOB_TOKEN']
+
 o = urlparse(os.getenv('CI_PROJECT_URL', None))
 PROJECT_URL = f"{o.scheme}://{o.netloc}"
 print(f"set PROJECT_URL = {PROJECT_URL}")
