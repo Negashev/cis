@@ -209,7 +209,7 @@ async def services_diff(request):
         code_builder_branch = 404
         if 'status' in request.query:
             code_builder_branch = request.query['status']
-        return request.Response(text=builder_branch, mime_type="text/html", code=code_builder_branch)
+        return request.Response(text=builder_branch, mime_type="text/html", code=int(code_builder_branch))
     return request.Response(text=os.getenv('CI_COMMIT_REF_SLUG', builder_branch), mime_type="text/html")
 
 
